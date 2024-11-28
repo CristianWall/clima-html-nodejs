@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home - Clima App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gray-100 flex h-screen">
+
+    <!-- Sidebar -->
+    <div class="bg-blue-600 text-white w-64 flex-shrink-0 hidden lg:block">
+        <div class="p-4">
+            <h2 class="text-2xl font-bold">Clima App</h2>
+        </div>
+        <ul class="space-y-2 px-4">
+            <li><a href="#" class="block py-2 px-3 rounded-md hover:bg-blue-500">Inicio</a></li>
+            <li><a href="#" onclick="mostrarCuenta()" class="block py-2 px-3 rounded-md hover:bg-blue-500">Cuenta</a>
+            </li>
+            <li><button onclick="logout()" class="w-full text-left py-2 px-3 rounded-md hover:bg-red-500">Cerrar
+                    Sesión</button></li>
+        </ul>
+    </div>
+
+    <!-- Mobile Sidebar -->
+    <div class="bg-blue-600 text-white fixed inset-y-0 z-50 transform -translate-x-full lg:hidden transition duration-300 ease-in-out"
+        id="mobileSidebar">
+        <div class="p-4">
+            <h2 class="text-2xl font-bold">Clima App</h2>
+        </div>
+        <ul class="space-y-2 px-4">
+            <li><a href="#" class="block py-2 px-3 rounded-md hover:bg-blue-500">Inicio</a></li>
+            <li><a href="#" onclick="mostrarCuenta()" class="block py-2 px-3 rounded-md hover:bg-blue-500">Cuenta</a>
+            </li>
+            <li><button onclick="logout()" class="w-full text-left py-2 px-3 rounded-md hover:bg-red-500">Cerrar
+                    Sesión</button></li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 p-6">
+        <div class="lg:hidden">
+            <button class="bg-blue-600 text-white py-2 px-4 rounded-md" onclick="toggleSidebar()">Menú</button>
+        </div>
+        <h1 class="text-3xl font-bold mb-4">Clima en tu región y ciudades cercanas</h1>
+        <div id="weather" class="bg-white p-4 rounded-lg shadow-md mb-6">
+            <p class="text-gray-600">Cargando información del clima...</p>
+        </div>
+        <div id="nearbyCities" class="bg-white p-4 rounded-lg shadow-md">
+            <p class="text-gray-600">Cargando ciudades cercanas...</p>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = '60b012aae9dead32d6fb08785a6b03aa'; // Reemplaza con tu API Key de OpenWeatherMap
+
+        // Toggle Sidebar for mobile
+        function toggleSidebar() {
+            const sidebar = document.getElementById('mobileSidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+
+        // Cerrar sesión
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+
+        // Mostrar información de cuenta
+        async function mostrarCuenta() {
+            try {
+                console.log('Intentando obtener el token del usuario...');
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    console.error('Token no encontrado. El usuario no está autenticado.');
+                    alert('No has iniciado sesión.');
+                    return;
+                }
+
+                console.log('Token encontrado:', token);
+                console.log('Haciendo petición a la API para obtener datos del usuario...');
+
+                const response = await fetch('http://localhost:3000/auth/user', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                console.log('Respuesta recibida del servidor:', response);
+
+                if (!response.ok) {
+                    console.error('Error en la respuesta de la API:', response.status, response.statusText);
+                    throw new Error('No se pudo obtener la cuenta.');
+                }
+
+                const data = await response.json();
+                console.log('Datos recibidos del servidor:', data);
+
+                // Mostrar ID, nombre_usuario y correo
+                alert(`ID: ${data.usuario.id}\nNombre: ${data.usuario.nombre_usuario}\nCorreo: ${data.usuario.correo}`);
+            } catch (error) {
+                console.error('Error al obtener la cuenta:', error);
+                alert('Error al obtener la información del usuario.');
+            }
+        }
+
+
+
+
+
+        // Obtener el clima de la región
+        async function fetchWeather() {
+            const weatherDiv = document.getElementById('weather');
+            const citiesDiv = document.getElementById('nearbyCities');
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject);
+                });
+                const { latitude, longitude } = position.coords;
+
+                // Clima actual en la ubicación del usuario
+                const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&lang=es&appid=${apiKey}`);
+                const data = await response.json();
+                weatherDiv.innerHTML = `
+                    <h2 class="text-xl font-bold">Tu ubicación: ${data.name}, ${data.sys.country}</h2>
+                    <p class="text-gray-700 text-lg">Clima: ${data.weather[0].description}</p>
+                    <p class="text-gray-700 text-lg">Temperatura: ${data.main.temp}°C</p>
+                `;
+
+                // Ciudades cercanas
+                const nearbyResponse = await fetch(`https://api.openweathermap.org/data/2.5/find?lat=${latitude}&lon=${longitude}&cnt=10&units=metric&lang=es&appid=${apiKey}`);
+                const nearbyData = await nearbyResponse.json();
+
+                citiesDiv.innerHTML = `
+                    <h2 class="text-xl font-bold mb-4">Ciudades cercanas:</h2>
+                    <ul class="space-y-2">
+                        ${nearbyData.list.map(city => `
+                            <li class="border p-2 rounded-md">
+                                <strong>${city.name}, ${city.sys.country}</strong><br>
+                                Clima: ${city.weather[0].description}<br>
+                                Temperatura: ${city.main.temp}°C
+                            </li>
+                        `).join('')}
+                    </ul>
+                `;
+            } catch (error) {
+                weatherDiv.innerHTML = `<p class="text-red-500">No se pudo obtener la información del clima.</p>`;
+                citiesDiv.innerHTML = `<p class="text-red-500">No se pudo cargar las ciudades cercanas.</p>`;
+                console.error('Error obteniendo el clima:', error);
+            }
+        }
+
+        // Ejecutar al cargar la página
+        fetchWeather();
+    </script>
+</body>
+
+</html>

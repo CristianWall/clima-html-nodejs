@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clima App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-md w-96">
+        <h1 class="text-2xl font-bold mb-4 text-center">Iniciar Sesión</h1>
+        <form id="loginForm" class="space-y-4">
+            <input type="email" id="email" placeholder="Correo electrónico" class="w-full p-2 border rounded-md">
+            <input type="password" id="password" placeholder="Contraseña" class="w-full p-2 border rounded-md">
+            <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded-md">Ingresar</button>
+        </form>
+        <p class="mt-4 text-sm text-center">
+            ¿No tienes cuenta? <a href="registro.html" class="text-blue-500">Regístrate aquí</a>
+        </p>
+        
+    </div>
+</body>
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+
+        try {
+            const response = await fetch('http://localhost:3000/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ correo: email, contrasena: password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Guardar el token en el almacenamiento local
+                localStorage.setItem('token', data.token);
+                alert(data.message);
+
+                // Redirigir a home.html
+                window.location.href = 'home.html';
+            } else {
+                alert(data.error);
+            }
+        } catch (error) {
+            console.error('Error al iniciar sesión:', error);
+            alert('Hubo un problema con el inicio de sesión.');
+        }
+    });
+</script>
+
+</html>
